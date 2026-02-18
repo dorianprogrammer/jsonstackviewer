@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const Store = require("electron-store").default;
 
 const store = new Store();
@@ -22,7 +23,7 @@ function createWindow() {
   mainWindow.maximize();
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-  //   mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -50,6 +51,34 @@ ipcMain.handle("clear-all", () => {
   store.clear();
   return true;
 });
+
+// importa archvios json
+ipcMain.handle("import-json-files", async () => {
+  const { filePaths, canceled } = await dialog.showOpenDialog({
+    title: "Importar archivos JSON",
+    properties: ["openFile", "multiSelections"],
+    filters: [{ name: "JSON", extensions: ["json"] }],
+  });
+
+  if (canceled || !filePaths.length) return []; 
+
+  try {
+    const files = filePaths.map((filePath) => ({
+      name: path.basename(filePath),
+      content: fs.readFileSync(filePath, "utf-8"),
+    }));
+    return files;
+  } catch (error) {
+    console.error("Error al importar archivos:", error);
+    return []; 
+  }
+});
+
+app.commandLine.appendSwitch('disable-http-cache');
+app.commandLine.appendSwitch('disable-gpu');
+
+const os = require("os");
+app.setPath('userData', path.join(os.tmpdir(), 'jsonstackviewer-dev'));
 
 app.on("ready", createWindow);
 
