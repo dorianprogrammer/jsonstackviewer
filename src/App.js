@@ -9,12 +9,28 @@ function App() {
   const [activeTabId, setActiveTabId] = useState(null);
   const [showTabSearch, setShowTabSearch] = useState(false);
 
+  const migrateTabs = (loadedTabs) =>
+    loadedTabs.map((t) => {
+      if (t.files && Array.isArray(t.files)) return t;
+      const initialFile =
+        t.content && t.content.trim().length > 0
+          ? { id: Date.now().toString() + Math.random(), name: "data.json", content: t.content }
+          : null;
+      return {
+        id: t.id,
+        name: t.name,
+        files: initialFile ? [initialFile] : [],
+        activeFileId: initialFile ? initialFile.id : null,
+      };
+    });
+
   useEffect(() => {
     const loadTabs = async () => {
       const savedTabs = await window.electronAPI.loadTabs();
-      if (savedTabs.length > 0) {
-        setTabs(savedTabs);
-        setActiveTabId(savedTabs[0].id);
+      const migrated = migrateTabs(savedTabs || []);
+      if (migrated.length > 0) {
+        setTabs(migrated);
+        setActiveTabId(migrated[0].id);
       } else {
         addNewTab();
       }
@@ -28,35 +44,24 @@ function App() {
     }
   }, [tabs]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl+T or Cmd+T - New tab
       if ((e.ctrlKey || e.metaKey) && e.key === "t") {
         e.preventDefault();
         addNewTab();
       }
-
-      // Ctrl+W or Cmd+W - Close active tab
       if ((e.ctrlKey || e.metaKey) && e.key === "w") {
         e.preventDefault();
-        if (activeTabId) {
-          closeTab(activeTabId);
-        }
+        if (activeTabId) closeTab(activeTabId);
       }
-
-      // Ctrl+P or Cmd+P - Tab search
       if ((e.ctrlKey || e.metaKey) && e.key === "p") {
         e.preventDefault();
         setShowTabSearch(true);
       }
-
-      // ESC - Close tab search
       if (e.key === "Escape" && showTabSearch) {
         setShowTabSearch(false);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tabs, activeTabId, showTabSearch]);
@@ -65,9 +70,10 @@ function App() {
     const newTab = {
       id: Date.now().toString(),
       name: `Tab ${tabs.length + 1}`,
-      content: "{\n  \n}",
+      files: [],
+      activeFileId: null,
     };
-    setTabs([...tabs, newTab]);
+    setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
   };
 
@@ -85,17 +91,17 @@ function App() {
     }
   };
 
-  const updateTabContent = (tabId, content) => {
-    setTabs(tabs.map((tab) => (tab.id === tabId ? { ...tab, content } : tab)));
-  };
-
   const renameTab = (tabId, newName) => {
-    setTabs(tabs.map((tab) => (tab.id === tabId ? { ...tab, name: newName } : tab)));
+    setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, name: newName } : tab)));
   };
 
   const handleTabSelect = (tabId) => {
     setActiveTabId(tabId);
     setShowTabSearch(false);
+  };
+
+  const onUpdateTab = (tabId, patch) => {
+    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...patch } : t)));
   };
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
@@ -105,27 +111,18 @@ function App() {
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
-        onTabClick={setActiveTabId}
+        onTabClick={handleTabSelect}
         onTabClose={closeTab}
         onAddTab={addNewTab}
         onTabRename={renameTab}
       />
-
-      <div className="tab-content">
-        {activeTab ? (
-          <Tab tab={activeTab} onContentChange={updateTabContent} />
-        ) : (
-          <div className="no-tabs-message">No tabs open</div>
-        )}
-      </div>
-
+      {activeTab && (
+        <div className="tab-content">
+          <Tab tab={activeTab} onUpdateTab={onUpdateTab} />
+        </div>
+      )}
       {showTabSearch && (
-        <TabSearch
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onSelectTab={handleTabSelect}
-          onClose={() => setShowTabSearch(false)}
-        />
+        <TabSearch tabs={tabs} activeTabId={activeTabId} onSelectTab={handleTabSelect} onClose={() => setShowTabSearch(false)} />
       )}
     </div>
   );
