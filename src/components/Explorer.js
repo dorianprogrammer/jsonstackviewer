@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { FilePlus, Upload, FileJson } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { FilePlus, Upload, FileJson, Trash2 } from "lucide-react";
 import InputModal from "./InputModal";
+import ConfirmModal from "./ConfirmModal";
 
 function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFiles, onRenameFile, onDeleteFile }) {
   const [showModal, setShowModal] = useState(false);
@@ -11,12 +12,24 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
     action: () => {},
   });
 
-  const [contextMenu, setContextMenu] = useState({
-    visible: false,
-    x: 0,
-    y: 0,
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
     fileId: null,
+    fileName: "",
   });
+
+  const [editingFileId, setEditingFileId] = useState(null);
+  const [editingName, setEditingName] = useState("");
+  const inlineInputRef = useRef(null);
+
+  useEffect(() => {
+    if (editingFileId && inlineInputRef.current) {
+      inlineInputRef.current.focus();
+      const val = inlineInputRef.current.value;
+      const dotIndex = val.lastIndexOf(".json");
+      inlineInputRef.current.setSelectionRange(0, dotIndex > 0 ? dotIndex : val.length);
+    }
+  }, [editingFileId]);
 
   const openModal = (title, placeholder, defaultValue, action) => {
     setModalConfig({ title, placeholder, defaultValue, action });
@@ -30,50 +43,54 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
 
   const handleCreateFile = () => {
     openModal("Create new JSON file", "File name...", "", (name) => {
-      if (!name.trim()) {
-        alert("File name cannot be empty.");
-        return;
-      }
+      if (!name.trim()) return;
       const finalName = name.endsWith(".json") ? name : `${name}.json`;
       onCreateFile({ name: finalName, content: "{\n\n}" });
       closeModal();
     });
   };
 
-  const handleRename = (fileId) => {
-    const file = files.find((f) => f.id === fileId);
-    if (!file) return;
-    openModal("Rename JSON file", "New name for the file...", file.name, (newName) => {
-      if (!newName.trim()) {
-        alert("File name cannot be empty.");
-        return;
-      }
-      const finalName = newName.endsWith(".json") ? newName : `${newName}.json`;
-      onRenameFile(fileId, finalName);
-      closeModal();
-    });
+  const startInlineRename = (e, file) => {
+    e.stopPropagation();
+    setEditingFileId(file.id);
+    setEditingName(file.name);
   };
 
-  const handleDelete = (fileId) => {
-    const file = files.find((f) => f.id === fileId);
-    if (!file) return;
-    const confirmed = confirm(`Delete ${file.name}?`);
-    if (confirmed) {
-      onDeleteFile(file.id);
+  const commitInlineRename = () => {
+    const trimmed = editingName.trim();
+    if (trimmed && trimmed !== files.find((f) => f.id === editingFileId)?.name) {
+      const finalName = trimmed.endsWith(".json") ? trimmed : `${trimmed}.json`;
+      onRenameFile(editingFileId, finalName);
     }
+    setEditingFileId(null);
+    setEditingName("");
   };
 
-  const openContextMenu = (e, fileId) => {
-    e.preventDefault();
-    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, fileId });
+  const cancelInlineRename = () => {
+    setEditingFileId(null);
+    setEditingName("");
   };
 
-  const closeContextMenu = () => setContextMenu({ visible: false, x: 0, y: 0, fileId: null });
+  const handleInlineKeyDown = (e) => {
+    if (e.code === "Enter") commitInlineRename();
+    if (e.code === "Escape") cancelInlineRename();
+  };
 
-  useEffect(() => {
-    window.addEventListener("click", closeContextMenu);
-    return () => window.removeEventListener("click", closeContextMenu);
-  }, []);
+  const handleDelete = (e, fileId) => {
+    e.stopPropagation();
+    const file = files.find((f) => f.id === fileId);
+    if (!file) return;
+    setConfirmModal({ isOpen: true, fileId: file.id, fileName: file.name });
+  };
+
+  const handleConfirmDelete = () => {
+    onDeleteFile(confirmModal.fileId);
+    setConfirmModal({ isOpen: false, fileId: null, fileName: "" });
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmModal({ isOpen: false, fileId: null, fileName: "" });
+  };
 
   return (
     <div className="explorer-container">
@@ -105,45 +122,44 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
             {files.map((file) => (
               <li
                 key={file.id}
-                onClick={() => onSelectFile(file.id)}
-                onContextMenu={(e) => openContextMenu(e, file.id)}
-                className={`explorer-item ${activeFileId === file.id ? "active" : ""}`}
+                onClick={() => {
+                  if (editingFileId !== file.id) onSelectFile(file.id);
+                }}
+                className={`explorer-item ${activeFileId === file.id ? "active" : ""} ${editingFileId === file.id ? "editing" : ""}`}
               >
-                {file.name}
+                {editingFileId === file.id ? (
+                  <input
+                    ref={inlineInputRef}
+                    className="explorer-inline-input"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={handleInlineKeyDown}
+                    onBlur={commitInlineRename}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <>
+                    <span
+                      className="explorer-item-name"
+                      onDoubleClick={(e) => startInlineRename(e, file)}
+                      title="Double-click to rename"
+                    >
+                      {file.name}
+                    </span>
+                    <button
+                      className="explorer-item-delete"
+                      onClick={(e) => handleDelete(e, file.id)}
+                      title="Delete file"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
         )}
       </div>
-      {contextMenu.visible && (
-        <div
-          className="context-menu"
-          style={{
-            position: "fixed",
-            top: `${contextMenu.y}px`,
-            left: `${contextMenu.x}px`,
-          }}
-        >
-          <div
-            className="context-menu-item"
-            onClick={() => {
-              handleRename(contextMenu.fileId);
-              closeContextMenu();
-            }}
-          >
-            Rename
-          </div>
-          <div
-            className="context-menu-item danger"
-            onClick={() => {
-              handleDelete(contextMenu.fileId);
-              closeContextMenu();
-            }}
-          >
-            Delete
-          </div>
-        </div>
-      )}
       <InputModal
         isOpen={showModal}
         title={modalConfig.title}
@@ -151,6 +167,12 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
         defaultValue={modalConfig.defaultValue}
         onConfirm={(value) => modalConfig.action(value)}
         onCancel={closeModal}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        fileName={confirmModal.fileName}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </div>
   );

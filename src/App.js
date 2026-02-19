@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TabBar from "./components/TabBar";
 import Tab from "./components/Tab";
 import TabSearch from "./components/TabSearch";
@@ -8,6 +8,15 @@ function App() {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
   const [showTabSearch, setShowTabSearch] = useState(false);
+  // No editorRef needed — CodeMirror focus detected via DOM class
+  const isEditorFocused = () => {
+    // CodeMirror uses a contenteditable div with class 'cm-content'
+    const active = document.activeElement;
+    if (!active) return false;
+    if (active.classList.contains("cm-content")) return true;
+    if (active.closest?.(".cm-editor")) return true;
+    return false;
+  };
 
   const migrateTabs = (loadedTabs) =>
     loadedTabs.map((t) => {
@@ -23,6 +32,31 @@ function App() {
         activeFileId: initialFile ? initialFile.id : null,
       };
     });
+
+  const generateJsonFileName = (parsed) => {
+    const now = new Date();
+    const timestamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+      "_",
+      String(now.getHours()).padStart(2, "0"),
+      String(now.getMinutes()).padStart(2, "00"),
+      String(now.getSeconds()).padStart(2, "0"),
+    ].join("");
+    if (Array.isArray(parsed)) return `array_${timestamp}.json`;
+    if (typeof parsed === "object" && parsed !== null) {
+      const topKey = Object.keys(parsed)[0];
+      if (topKey) {
+        const slug = topKey
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "_")
+          .slice(0, 24);
+        return `${slug}_${timestamp}.json`;
+      }
+    }
+    return `paste_${timestamp}.json`;
+  };
 
   useEffect(() => {
     const loadTabs = async () => {
@@ -46,53 +80,17 @@ function App() {
     }
   }, [tabs]);
 
-  const generateJsonFileName = (parsed) => {
-    const now = new Date();
-    const timestamp = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-      "_",
-      String(now.getHours()).padStart(2, "0"),
-      String(now.getMinutes()).padStart(2, "0"),
-      String(now.getSeconds()).padStart(2, "0"),
-    ].join("");
-
-    // Try to derive a meaningful name from the JSON structure
-    if (Array.isArray(parsed)) {
-      return `array_${timestamp}.json`;
-    }
-    if (typeof parsed === "object" && parsed !== null) {
-      const topKey = Object.keys(parsed)[0];
-      if (topKey) {
-        const slug = topKey
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "_")
-          .slice(0, 24);
-        return `${slug}_${timestamp}.json`;
-      }
-    }
-    return `paste_${timestamp}.json`;
-  };
-
   useEffect(() => {
     const handleKeyDown = async (e) => {
-      // Ignore Ctrl+V when the user is typing in an input, textarea, or Monaco
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      const isEditable = document.activeElement?.isContentEditable;
-      const isMonaco = document.activeElement?.closest?.(".editor-host");
-      if (tag === "input" || tag === "textarea" || isEditable || isMonaco) {
-        // Let normal paste through — only intercept when focus is on the app shell
-        if ((e.ctrlKey || e.metaKey) && e.code === "KeyV") {
-          // Still allow the event to proceed normally
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.code === "KeyV") {
+      if (isEditorFocused()) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyV") {
         e.preventDefault();
         try {
           const text = await navigator.clipboard.readText();
           const trimmed = text.trim();
           if (!trimmed) return;
-          const parsed = JSON.parse(trimmed); // throws if not valid JSON
+          const parsed = JSON.parse(trimmed);
           const formatted = JSON.stringify(parsed, null, 2);
           const name = generateJsonFileName(parsed);
           const newFile = { id: crypto.randomUUID(), name, content: formatted };
@@ -102,7 +100,7 @@ function App() {
             ),
           );
         } catch {
-          // Clipboard content is not valid JSON — ignore silently
+          // Not valid JSON — ignore silently
         }
         return;
       }
@@ -123,6 +121,7 @@ function App() {
         setShowTabSearch(false);
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tabs, activeTabId, showTabSearch]);
@@ -142,7 +141,6 @@ function App() {
     const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
     const newTabs = tabs.filter((tab) => tab.id !== tabId);
     setTabs(newTabs);
-
     if (tabId === activeTabId && newTabs.length > 0) {
       const nextIndex = currentIndex < newTabs.length ? currentIndex : currentIndex - 1;
       setActiveTabId(newTabs[nextIndex].id);
@@ -162,6 +160,8 @@ function App() {
     setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...patch } : t)));
   };
 
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+
   return (
     <div className="app-container">
       <TabBar
@@ -173,14 +173,16 @@ function App() {
         onTabRename={renameTab}
       />
       <div className="tab-content">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            style={{ display: tab.id === activeTabId ? "flex" : "none", width: "100%", height: "100%" }}
-          >
-            <Tab tab={tab} onUpdateTab={onUpdateTab} />
-          </div>
-        ))}
+        {activeTab && (
+          <Tab
+            key={activeTab.id}
+            tab={activeTab}
+            onUpdateTab={onUpdateTab}
+            onRegisterEditor={(editor) => {
+              editorRef.current = editor;
+            }}
+          />
+        )}
       </div>
       {showTabSearch && (
         <TabSearch

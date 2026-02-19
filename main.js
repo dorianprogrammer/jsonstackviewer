@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store").default;
@@ -33,6 +33,22 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+const menu = Menu.buildFromTemplate([
+  {
+    label: "Edit",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "selectAll" },
+    ],
+  },
+]);
+Menu.setApplicationMenu(menu);
 
 // IPC handlers for storage
 ipcMain.handle("save-tabs", (event, tabs) => {

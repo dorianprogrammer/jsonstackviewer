@@ -1,148 +1,200 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as monaco from "monaco-editor";
-import "monaco-editor/min/vs/editor/editor.main.css";
+import { EditorView, lineNumbers, keymap, scrollPastEnd } from "@codemirror/view";
+import { EditorState, Compartment } from "@codemirror/state";
+import { json } from "@codemirror/lang-json";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { defaultKeymap, historyKeymap, history, indentWithTab } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches, search } from "@codemirror/search";
 import { Minimize2, AlignLeft, ArrowUp } from "lucide-react";
 
-function JsonViewer({ content, isValid, error, onContentChange, onValidation, isViewerEnabled }) {
-  const editorRef = useRef(null);
-  const containerRef = useRef(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+const readOnlyCompartment = new Compartment();
 
-  // Keep callbacks in refs to avoid stale closures in the Monaco listener
+function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }) {
+  const containerRef = useRef(null);
+  const viewRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isValid, setIsValid] = useState(true);
+  const [error, setError] = useState(null);
+
   const onContentChangeRef = useRef(onContentChange);
-  const onValidationRef = useRef(onValidation);
   useEffect(() => {
     onContentChangeRef.current = onContentChange;
   }, [onContentChange]);
+
+  const fileIdRef = useRef(fileId);
+  const initialContentRef = useRef(initialContent);
   useEffect(() => {
-    onValidationRef.current = onValidation;
-  }, [onValidation]);
-
-  // Create editor once
+    fileIdRef.current = fileId;
+  }, [fileId]);
   useEffect(() => {
-    if (!containerRef.current) return;
+    initialContentRef.current = initialContent;
+  }, [initialContent]);
 
-    const editor = monaco.editor.create(containerRef.current, {
-      value: content || "",
-      language: "json",
-      theme: "vs-dark",
-      automaticLayout: true,
-      lineNumbers: "on",
-      minimap: { enabled: false },
-      fontSize: 14,
-      scrollBeyondLastLine: true,
-      wordWrap: "on",
-      readOnly: true,
-    });
+  const validate = (val) => {
+    try {
+      if (val.trim()) JSON.parse(val);
+      setIsValid(true);
+      setError(null);
+    } catch (e) {
+      setIsValid(false);
+      setError(e.message);
+    }
+  };
 
-    editorRef.current = editor;
-
-    const scrollDisposable = editor.onDidScrollChange((e) => {
-      setShowScrollTop(e.scrollTop > 100);
-    });
-
-    const disposable = editor.onDidChangeModelContent(() => {
-      const val = editor.getModel().getValue();
-      onContentChangeRef.current?.(val);
-      try {
-        JSON.parse(val);
-        onValidationRef.current?.(true, null);
-      } catch (e) {
-        onValidationRef.current?.(false, e.message);
+  // Create CodeMirror once
+  useEffect(() => {
+    const updateListener = EditorView.updateListener.of((update) => {
+      // Scroll tracking
+      if (update.view.scrollDOM.scrollTop > 100) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+      // Content change — only propagate user edits
+      if (update.docChanged) {
+        const val = update.state.doc.toString();
+        onContentChangeRef.current?.(val);
+        validate(val);
       }
     });
 
-    return () => {
-      scrollDisposable.dispose();
-      disposable.dispose();
-      setTimeout(() => {
-        editor.dispose();
-      }, 0);
-      editorRef.current = null;
-    };
-  }, []);
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: initialContentRef.current || "",
+        extensions: [
+          history(),
+          lineNumbers(),
+          json(),
+          oneDark,
+          highlightSelectionMatches(),
+          search({ top: true }),
+          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+          EditorView.lineWrapping,
+          readOnlyCompartment.of(EditorState.readOnly.of(!fileIdRef.current)),
+          updateListener,
+        ],
+      }),
+      parent: containerRef.current,
+    });
 
-  // Sync content when active file changes
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const model = editor.getModel();
-    if (!model) return;
-    if (model.getValue() !== content) {
-      // Suppress the change event while we programmatically set the value
-      model.setValue(content || "");
+    viewRef.current = view;
+
+    // Focus if a file is already loaded
+    if (fileIdRef.current) {
+      requestAnimationFrame(() => view.focus());
     }
-  }, [content]);
 
-  // Sync readOnly when isViewerEnabled changes
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When fileId changes, load new content and reset state
   useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.updateOptions({ readOnly: !isViewerEnabled });
-  }, [isViewerEnabled]);
+    const view = viewRef.current;
+    if (!view) return;
+
+    if (!fileId) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: "" },
+        effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(true)),
+      });
+      setIsValid(true);
+      setError(null);
+      return;
+    }
+
+    // Replace entire content and unlock editing
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: initialContent || "" },
+      effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(false)),
+    });
+    // Scroll to top
+    view.dispatch({ selection: { anchor: 0 } });
+    view.scrollDOM.scrollTop = 0;
+    setIsValid(true);
+    setError(null);
+    requestAnimationFrame(() => view.focus());
+  }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const getValue = () => viewRef.current?.state.doc.toString() ?? "";
+
+  const setValue = (val) => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: val },
+    });
+  };
 
   const formatJson = () => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const val = editor.getModel().getValue();
     try {
-      const formatted = JSON.stringify(JSON.parse(val), null, 2);
-      editor.getModel().setValue(formatted);
+      const formatted = JSON.stringify(JSON.parse(getValue()), null, 2);
+      setValue(formatted);
       onContentChangeRef.current?.(formatted);
-      onValidationRef.current?.(true, null);
+      setIsValid(true);
+      setError(null);
     } catch (e) {
-      onValidationRef.current?.(false, e.message);
+      setIsValid(false);
+      setError(e.message);
       alert("JSON inválido, no se pudo formatear.");
     }
   };
 
   const compactJson = () => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const val = editor.getModel().getValue();
     try {
-      const compacted = JSON.stringify(JSON.parse(val));
-      editor.getModel().setValue(compacted);
+      const compacted = JSON.stringify(JSON.parse(getValue()));
+      setValue(compacted);
       onContentChangeRef.current?.(compacted);
-      onValidationRef.current?.(true, null);
+      setIsValid(true);
+      setError(null);
     } catch (e) {
-      onValidationRef.current?.(false, e.message);
+      setIsValid(false);
+      setError(e.message);
       alert("JSON inválido, no se pudo compactar.");
     }
   };
 
   const scrollToTop = () => {
-    editorRef.current?.setScrollTop(0);
+    if (viewRef.current) {
+      viewRef.current.scrollDOM.scrollTop = 0;
+    }
   };
 
   return (
     <div className="viewer-container">
-      {!isViewerEnabled ? (
+      <div className="viewer-toolbar" style={{ display: isViewerEnabled ? "flex" : "none" }}>
+        <button onClick={formatJson} className="btn" title="Formatear JSON">
+          <AlignLeft size={16} /> Formatear
+        </button>
+        <button onClick={compactJson} className="btn" title="Compactar JSON">
+          <Minimize2 size={16} /> Compactar
+        </button>
+      </div>
+
+      {isViewerEnabled && showScrollTop && (
+        <div className="scroll-to-top-bar">
+          <button className="scroll-to-top-btn" onClick={scrollToTop} title="Volver al inicio">
+            <ArrowUp size={14} />
+            <span>Volver al inicio</span>
+          </button>
+        </div>
+      )}
+
+      <div
+        className="editor-host"
+        ref={containerRef}
+        style={{ display: isViewerEnabled ? "flex" : "none", flex: 1, minHeight: 0, overflow: "auto" }}
+      />
+
+      {!isViewerEnabled && (
         <div className="viewer-disabled">
           <p>Select or create a JSON file to get started.</p>
         </div>
-      ) : (
-        <>
-          <div className="viewer-toolbar">
-            <button onClick={formatJson} className="btn" title="Formatear JSON">
-              <AlignLeft size={16} /> Formatear
-            </button>
-            <button onClick={compactJson} className="btn" title="Compactar JSON">
-              <Minimize2 size={16} /> Compactar
-            </button>
-          </div>
-          {showScrollTop && (
-            <div className="scroll-to-top-bar">
-              <button className="scroll-to-top-btn" onClick={scrollToTop} title="Volver al inicio">
-                <ArrowUp size={14} />
-                <span>Volver al inicio</span>
-              </button>
-            </div>
-          )}
-          <div className="editor-host" ref={containerRef} />
-          {!isValid && <div className="json-error">JSON inválido: {error}</div>}
-        </>
       )}
+
+      {isViewerEnabled && !isValid && <div className="json-error">JSON inválido: {error}</div>}
     </div>
   );
 }

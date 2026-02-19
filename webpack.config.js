@@ -1,6 +1,5 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MonacoWebpackPlugin = require("monaco-editor-webpack-plugin");
 
 module.exports = {
   entry: "./src/index.js",
@@ -9,7 +8,7 @@ module.exports = {
     filename: "bundle.js",
     clean: true,
     globalObject: "self", // importante para workers
-    publicPath: "",       // rutas relativas para file://
+    publicPath: "", // rutas relativas para file://
   },
   target: "electron-renderer",
   module: {
@@ -34,13 +33,7 @@ module.exports = {
       },
     ],
   },
-  plugins: [
-    new HtmlWebpackPlugin({ template: "./index.html" }),
-    new MonacoWebpackPlugin({
-      languages: ["json"],
-      features: ["format"],
-    }),
-  ],
+  plugins: [new HtmlWebpackPlugin({ template: "./index.html" })],
   resolve: { extensions: [".js", ".jsx"] },
   devtool: "source-map",
 };

@@ -1,21 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import ResizablePanels from "./ResizablePanels";
 import Explorer from "./Explorer";
 import JsonViewer from "./JsonViewer";
 
 function Tab({ tab, onUpdateTab }) {
-  const [isValid, setIsValid] = useState(true);
-  const [error, setError] = useState(null);
-
   const activeFile = useMemo(() => tab.files.find((f) => f.id === tab.activeFileId), [tab.files, tab.activeFileId]);
-  const viewerContent = activeFile?.content ?? "";
+
   const isViewerEnabled = !!activeFile;
 
   const setActiveFileId = (fileId) => {
     onUpdateTab(tab.id, { activeFileId: fileId });
-    // Reset validation state when switching files
-    setIsValid(true);
-    setError(null);
   };
 
   const onCreateFile = ({ name, content }) => {
@@ -25,18 +19,14 @@ function Tab({ tab, onUpdateTab }) {
 
   const onImportFiles = async () => {
     const { importedFiles, errors } = await window.electronAPI.importJsonFiles();
-
     if (errors?.length > 0) {
       alert(`Error al importar archivos:\n${errors.join("\n")}`);
     }
-
     if (!Array.isArray(importedFiles) || importedFiles.length === 0) return;
-
     const importedWithIds = importedFiles.map((file) => ({
       id: crypto.randomUUID(),
       ...file,
     }));
-
     onUpdateTab(tab.id, {
       files: [...tab.files, ...importedWithIds],
       activeFileId: importedWithIds[0].id,
@@ -60,11 +50,6 @@ function Tab({ tab, onUpdateTab }) {
     onUpdateTab(tab.id, { files: updatedFiles });
   };
 
-  const handleValidation = (valid, errorMsg) => {
-    setIsValid(valid);
-    setError(errorMsg);
-  };
-
   return (
     <ResizablePanels
       left={
@@ -80,12 +65,10 @@ function Tab({ tab, onUpdateTab }) {
       }
       right={
         <JsonViewer
-          content={viewerContent}
-          isValid={isValid}
-          error={error}
-          onContentChange={onContentChange}
-          onValidation={handleValidation}
+          fileId={activeFile?.id ?? null}
+          initialContent={activeFile?.content ?? ""}
           isViewerEnabled={isViewerEnabled}
+          onContentChange={onContentChange}
         />
       }
     />

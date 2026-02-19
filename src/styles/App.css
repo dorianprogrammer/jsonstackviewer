@@ -753,23 +753,82 @@
 }
 
 .explorer-item {
-  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
   cursor: pointer;
   color: #d4d4d4;
   border-radius: 4px;
+  gap: 4px;
+  list-style: none;
 }
-
 .explorer-item:hover {
   background: #3a3a3a;
 }
 
 .explorer-item.active {
-  background-color: #333;
-  font-weight: bold;
+  background: #37373d;
+  color: #fff;
 }
 
 .explorer-empty {
   color: #aaa;
+}
+
+.explorer-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  user-select: none;
+}
+
+/* Delete button — hidden until hover */
+.explorer-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: transparent; /* invisible at rest */
+  cursor: pointer;
+  padding: 0;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.explorer-item:hover .explorer-item-delete {
+  color: #6a6a6a;
+}
+
+.explorer-item-delete:hover {
+  color: #ff6b6b !important;
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.explorer-item.editing {
+  padding: 3px 6px;
+}
+
+.explorer-inline-input {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #007acc;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
 }
 
 /* Viewer */
@@ -777,8 +836,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
-
 .viewer-toolbar {
   display: flex;
   gap: 8px;
@@ -800,10 +859,94 @@
   background: #4d4d4d;
 }
 
-/* Monaco host */
+/* CodeMirror host */
 .editor-host {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-host .cm-editor {
+  flex: 1;
+  min-height: 0;
   height: 100%;
+  font-size: 14px;
+  background: #1e1e1e;
+}
+
+.editor-host .cm-scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-family: "Consolas", "Monaco", monospace;
+}
+
+/* Match app background */
+.editor-host .cm-gutters {
+  background: #1e1e1e;
+  border-right: 1px solid #3d3d3d;
+  color: #858585;
+}
+
+.editor-host .cm-activeLineGutter {
+  background: #2a2a2a;
+}
+
+.editor-host .cm-activeLine {
+  background: #2a2a2a;
+}
+
+/* Move search panel to top */
+.editor-host .cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3d3d3d;
+  border-top: none;
+  order: -1;
+}
+
+.editor-host .cm-panels-top {
+  order: -1;
+}
+
+.editor-host .cm-panels-bottom {
+  order: -1;
+  border-top: none;
+  border-bottom: 1px solid #3d3d3d;
+}
+
+.editor-host .cm-panels {
+  background: #2d2d2d;
+  color: #ccc;
+}
+
+.editor-host .cm-textfield {
+  background: #3d3d3d;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.editor-host .cm-button {
+  background: #3d3d3d;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.editor-host .cm-button:hover {
+  background: #4d4d4d;
 }
 
 .tree-host {
@@ -1062,4 +1205,58 @@
   color: #6a6a6a;
   font-size: 11px;
   line-height: 1.5;
+}
+
+/* ── Confirm Modal ── */
+.confirm-modal {
+  border-top-color: #c0392b; /* red accent instead of blue — signals destructive action */
+  width: 380px;
+}
+
+.confirm-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirm-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(192, 57, 43, 0.15);
+  color: #e74c3c;
+  flex-shrink: 0;
+}
+
+.confirm-modal-body {
+  font-size: 13px;
+  color: #aaa;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.confirm-modal-filename {
+  color: #4ec9b0;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 12px;
+}
+
+.confirm-modal-warning {
+  font-size: 12px;
+  color: #6a6a6a;
+}
+
+/* Delete button — red filled, distinct from the blue confirm in InputModal */
+.modal-actions .btn.confirm-delete {
+  background: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+
+.modal-actions .btn.confirm-delete:hover {
+  background: #e74c3c;
+  border-color: #e74c3c;
 }
