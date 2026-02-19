@@ -43,7 +43,7 @@ function JsonViewer({ content, isValid, error, onContentChange, onValidation, is
       onContentChangeDisposable.dispose();
       editor.dispose(); // Limpieza cuando se desmonta el componente
     };
-  }, []);
+  }, [content]);
 
   useEffect(() => {
     const editor = editorRef.current;
