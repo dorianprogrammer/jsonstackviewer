@@ -3,6 +3,11 @@ const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store").default;
 
+require("electron-reload")(__dirname, {
+  electron: path.join(__dirname, "node_modules", ".bin", process.platform === "win32" ? "electron.cmd" : "electron"),
+  hardResetMethod: "exit",
+  ignored: /node_modules|[\/\\]\./,
+});
 const store = new Store();
 
 let mainWindow;
@@ -19,11 +24,10 @@ function createWindow() {
     },
   });
 
-  // Maximize window on startup
   mainWindow.maximize();
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-    mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -78,11 +82,11 @@ ipcMain.handle("import-json-files", async () => {
   return { importedFiles, errors };
 });
 
-app.commandLine.appendSwitch('disable-http-cache');
-app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch("disable-http-cache");
+app.commandLine.appendSwitch("disable-gpu");
 
 const os = require("os");
-app.setPath('userData', path.join(os.tmpdir(), 'jsonstackviewer-dev'));
+app.setPath("userData", path.join(os.tmpdir(), "jsonstackviewer-dev"));
 
 app.on("ready", createWindow);
 

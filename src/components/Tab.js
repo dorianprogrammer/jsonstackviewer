@@ -7,42 +7,40 @@ function Tab({ tab, onUpdateTab }) {
   const [isValid, setIsValid] = useState(true);
   const [error, setError] = useState(null);
 
-  // Identifica el archivo activo
-  const activeFile = useMemo(
-    () => tab.files.find((f) => f.id === tab.activeFileId),
-    [tab.files, tab.activeFileId]
-  );
+  const activeFile = useMemo(() => tab.files.find((f) => f.id === tab.activeFileId), [tab.files, tab.activeFileId]);
   const viewerContent = activeFile?.content ?? "";
-
   const isViewerEnabled = !!activeFile;
 
   const setActiveFileId = (fileId) => {
     onUpdateTab(tab.id, { activeFileId: fileId });
+    // Reset validation state when switching files
+    setIsValid(true);
+    setError(null);
   };
 
   const onCreateFile = ({ name, content }) => {
-    const newFile = { id: Date.now().toString(), name, content };
-    const files = [...tab.files, newFile];
-    onUpdateTab(tab.id, { files, activeFileId: newFile.id });
+    const newFile = { id: crypto.randomUUID(), name, content };
+    onUpdateTab(tab.id, { files: [...tab.files, newFile], activeFileId: newFile.id });
   };
 
   const onImportFiles = async () => {
     const { importedFiles, errors } = await window.electronAPI.importJsonFiles();
 
-    if (errors.length > 0) {
+    if (errors?.length > 0) {
       alert(`Error al importar archivos:\n${errors.join("\n")}`);
     }
 
-    if (Array.isArray(importedFiles) && importedFiles.length > 0) {
-      const importedWithIds = importedFiles.map((file) => ({
-        id: Date.now().toString() + Math.random(), // Generar un ID único
-        ...file,
-      }));
+    if (!Array.isArray(importedFiles) || importedFiles.length === 0) return;
 
-      const files = [...tab.files, ...importedWithIds];
-      const activeFileId = importedWithIds[0]?.id ?? null;
-      onUpdateTab(tab.id, { files, activeFileId });
-    }
+    const importedWithIds = importedFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      ...file,
+    }));
+
+    onUpdateTab(tab.id, {
+      files: [...tab.files, ...importedWithIds],
+      activeFileId: importedWithIds[0].id,
+    });
   };
 
   const onRenameFile = (fileId, newName) => {
@@ -52,17 +50,14 @@ function Tab({ tab, onUpdateTab }) {
 
   const onDeleteFile = (fileId) => {
     const files = tab.files.filter((f) => f.id !== fileId);
-    const newActiveFileId =
-      tab.activeFileId === fileId ? (files[0]?.id ?? null) : tab.activeFileId;
+    const newActiveFileId = tab.activeFileId === fileId ? (files[0]?.id ?? null) : tab.activeFileId;
     onUpdateTab(tab.id, { files, activeFileId: newActiveFileId });
   };
+
   const onContentChange = (newContent) => {
-    if (activeFile) {
-      const updatedFiles = tab.files.map((file) =>
-        file.id === activeFile.id ? { ...file, content: newContent } : file
-      );
-      onUpdateTab(tab.id, { files: updatedFiles });
-    }
+    if (!activeFile) return;
+    const updatedFiles = tab.files.map((f) => (f.id === activeFile.id ? { ...f, content: newContent } : f));
+    onUpdateTab(tab.id, { files: updatedFiles });
   };
 
   const handleValidation = (valid, errorMsg) => {
@@ -81,7 +76,6 @@ function Tab({ tab, onUpdateTab }) {
           onImportFiles={onImportFiles}
           onRenameFile={onRenameFile}
           onDeleteFile={onDeleteFile}
-          viewerContent={viewerContent}
         />
       }
       right={
@@ -91,7 +85,7 @@ function Tab({ tab, onUpdateTab }) {
           error={error}
           onContentChange={onContentChange}
           onValidation={handleValidation}
-          isViewerEnabled={isViewerEnabled} // Habilitar o deshabilitar Viewer
+          isViewerEnabled={isViewerEnabled}
         />
       }
     />

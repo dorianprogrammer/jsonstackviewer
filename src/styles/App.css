@@ -572,32 +572,32 @@
 /* Scroll to Top Button */
 .scroll-to-top {
   position: absolute;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 44px;
-  height: 44px;
+  bottom: 24px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
   background-color: #007acc;
   color: white;
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s;
-  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 10;
+  transition:
+    background-color 0.15s,
+    transform 0.15s;
 }
 
 .scroll-to-top:hover {
-  background-color: #005a9e;
-  transform: translateX(-50%) scale(1.1);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  background-color: #1a8ad4;
+  transform: scale(1.1);
 }
 
 .scroll-to-top:active {
-  transform: translateX(-50%) scale(0.95);
+  transform: scale(0.95);
 }
 
 /* Tab Search Overlay */
@@ -844,56 +844,150 @@
   color: #ff6b6b;
 }
 
+/* ── Modal Overlay ── */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: overlayFadeIn 0.15s ease;
 }
 
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Modal Box ── */
 .modal {
-  background: #2d2d2d;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  width: 400px;
+  background: #252525;
+  border: 1px solid #3d3d3d;
+  border-top: 2px solid #007acc;
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  width: 420px;
+  padding: 24px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modalSlideIn 0.18s ease;
 }
 
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Title ── */
 .modal-title {
-  margin-bottom: 16px;
-  font-size: 18px;
-  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e0e0e0;
+  letter-spacing: 0.2px;
+  margin: 0;
 }
 
+/* ── Preview text ── */
+.preview-text {
+  font-size: 12px;
+  color: #888;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 7px 10px;
+  margin: 0;
+}
+
+.preview-text strong {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.preview-text span {
+  color: #4ec9b0; /* teal — same as the tab-search-badge accent */
+}
+
+/* ── Input ── */
 .modal-input {
   width: 100%;
-  padding: 8px;
-  font-size: 16px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
   border-radius: 4px;
-  border: 1px solid #555;
-  color: #fff;
+  border: 1px solid #3d3d3d;
+  color: #d4d4d4;
   background: #1e1e1e;
-  margin-bottom: 12px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  margin: 0;
 }
 
+.modal-input::placeholder {
+  color: #555;
+}
+
+.modal-input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+/* ── Actions row ── */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
+  margin: 0;
 }
 
-.btn.danger {
-  background-color: #a12d2d;
+.modal-actions .btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
-.btn.danger:hover {
-  background-color: #ff4d4d;
+.modal-actions .btn:not(.danger) {
+  background: #007acc;
+  color: #fff;
+  border-color: #007acc;
+}
+
+.modal-actions .btn:not(.danger):hover {
+  background: #1a8ad4;
+  border-color: #1a8ad4;
+}
+
+.modal-actions .btn.danger {
+  background: #2d2d2d;
+  color: #cc6666;
+  border-color: #3d3d3d;
+}
+
+.modal-actions .btn.danger:hover {
+  background: #3a2020;
+  border-color: #cc6666;
+  color: #ff6b6b;
 }
 
 .viewer-disabled {
@@ -907,4 +1001,65 @@
   font-style: italic;
   padding: 15px;
   text-align: center;
+}
+
+.scroll-to-top-bar {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+  background: #252525;
+  border-bottom: 1px solid #3d3d3d;
+  flex-shrink: 0;
+}
+
+.scroll-to-top-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  background: #2d2d2d;
+  color: #d4d4d4;
+  border: 1px solid #3d3d3d;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.scroll-to-top-btn:hover {
+  background: #007acc;
+  border-color: #007acc;
+  color: #fff;
+}
+
+/* Explorer empty state */
+.explorer-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  gap: 8px;
+}
+
+.explorer-empty-icon {
+  color: #4d4d4d;
+  margin-bottom: 4px;
+}
+
+.explorer-empty-title {
+  color: #d4d4d4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.explorer-empty-hint {
+  color: #6a6a6a;
+  font-size: 11px;
+  line-height: 1.5;
 }
