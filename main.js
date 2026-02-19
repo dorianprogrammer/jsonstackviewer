@@ -3,11 +3,13 @@ const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store").default;
 
-require("electron-reload")(__dirname, {
-  electron: path.join(__dirname, "node_modules", ".bin", process.platform === "win32" ? "electron.cmd" : "electron"),
-  hardResetMethod: "exit",
-  ignored: /node_modules|[\/\\]\./,
-});
+if (process.env.NODE_ENV === "development") {
+  require("electron-reload")(__dirname, {
+    electron: path.join(__dirname, "node_modules", ".bin", process.platform === "win32" ? "electron.cmd" : "electron"),
+    hardResetMethod: "exit",
+    ignored: /node_modules|[\/\\]\./,
+  });
+}
 const store = new Store();
 
 let mainWindow;
@@ -27,7 +29,10 @@ function createWindow() {
   mainWindow.maximize();
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-  mainWindow.webContents.openDevTools();
+
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
