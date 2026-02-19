@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store").default;
+const { parse } = require("jsonc-parser");
 
 if (process.env.NODE_ENV === "development") {
   require("electron-reload")(__dirname, {
@@ -31,8 +32,8 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
 
   if (process.env.NODE_ENV === "development") {
-    mainWindow.webContents.openDevTools();
   }
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -92,11 +93,27 @@ ipcMain.handle("import-json-files", async () => {
 
   for (const filePath of filePaths) {
     try {
-      const content = fs.readFileSync(filePath, "utf-8");
-      JSON.parse(content); // Validar que sea JSON
-      importedFiles.push({ name: path.basename(filePath), content });
+      let content = fs.readFileSync(filePath, "utf-8");
+
+      // remove UTF-8 BOM if present
+      content = content.replace(/^\uFEFF/, "");
+
+      // Validar como JSONC (permite comentarios y trailing commas)
+      const errorsParse = [];
+      const parsed = parse(content, errorsParse, { allowTrailingComma: true });
+
+      if (errorsParse.length > 0 || parsed === undefined) {
+        throw new Error("Contenido inválido (JSON/JSONC).");
+      }
+
+      // Si quieres normalizar/bonito al importar:
+      const formatted = JSON.stringify(parsed, null, 2);
+
+      importedFiles.push({ name: path.basename(filePath), content: formatted });
     } catch (error) {
-      errors.push(`El archivo "${path.basename(filePath)}" no es un JSON válido.`);
+      errors.push(
+        `El archivo "${path.basename(filePath)}" no es un JSON válido. Detalle: ${error?.message ?? error}`,
+      );
     }
   }
 

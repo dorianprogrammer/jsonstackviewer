@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FilePlus, Upload, FileJson, Trash2 } from "lucide-react";
-import InputModal from "./InputModal";
+import InputModal from "./inputModal";
 import ConfirmModal from "./ConfirmModal";
 
 function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFiles, onRenameFile, onDeleteFile }) {
@@ -100,10 +100,7 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
         </button>
         <button
           onClick={async () => {
-            const importedFiles = await onImportFiles();
-            if (!Array.isArray(importedFiles)) {
-              alert("Failed to import JSON files. Please try again.");
-            }
+            await onImportFiles();
           }}
           className="btn"
         >

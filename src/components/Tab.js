@@ -18,15 +18,20 @@ function Tab({ tab, onUpdateTab }) {
   };
 
   const onImportFiles = async () => {
-    const { importedFiles, errors } = await window.electronAPI.importJsonFiles();
-    if (errors?.length > 0) {
+    const result = await window.electronAPI.importJsonFiles();
+    const importedFiles = result?.importedFiles ?? [];
+    const errors = result?.errors ?? [];
+
+    if (errors.length > 0) {
       alert(`Error al importar archivos:\n${errors.join("\n")}`);
     }
-    if (!Array.isArray(importedFiles) || importedFiles.length === 0) return;
+    if (importedFiles.length === 0) return;
+
     const importedWithIds = importedFiles.map((file) => ({
       id: crypto.randomUUID(),
       ...file,
     }));
+
     onUpdateTab(tab.id, {
       files: [...tab.files, ...importedWithIds],
       activeFileId: importedWithIds[0].id,
