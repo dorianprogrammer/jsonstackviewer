@@ -57,21 +57,25 @@ ipcMain.handle("import-json-files", async () => {
   const { filePaths, canceled } = await dialog.showOpenDialog({
     title: "Importar archivos JSON",
     properties: ["openFile", "multiSelections"],
-    filters: [{ name: "JSON", extensions: ["json"] }],
+    filters: [{ name: "Archivos JSON", extensions: ["json"] }],
   });
 
-  if (canceled || !filePaths.length) return []; 
+  if (canceled || !filePaths.length) return { importedFiles: [], errors: [] };
 
-  try {
-    const files = filePaths.map((filePath) => ({
-      name: path.basename(filePath),
-      content: fs.readFileSync(filePath, "utf-8"),
-    }));
-    return files;
-  } catch (error) {
-    console.error("Error al importar archivos:", error);
-    return []; 
+  const importedFiles = [];
+  const errors = [];
+
+  for (const filePath of filePaths) {
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      JSON.parse(content); // Validar que sea JSON
+      importedFiles.push({ name: path.basename(filePath), content });
+    } catch (error) {
+      errors.push(`El archivo "${path.basename(filePath)}" no es un JSON válido.`);
+    }
   }
+
+  return { importedFiles, errors };
 });
 
 app.commandLine.appendSwitch('disable-http-cache');

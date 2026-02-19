@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FilePlus, Upload } from "lucide-react";
 import InputModal from "./InputModal";
 
@@ -20,24 +20,45 @@ function Explorer({
         action: () => { },
     });
 
+    const [contextMenu, setContextMenu] = useState({
+        visible: false,
+        x: 0,
+        y: 0,
+        fileId: null,
+    });
+
     const openModal = (title, placeholder, defaultValue, action) => {
         setModalConfig({ title, placeholder, defaultValue, action });
         setShowModal(true);
     };
 
+    const closeModal = () => {
+        setModalConfig({ title: "", placeholder: "", defaultValue: "", action: () => { } });
+        setShowModal(false);
+    };
     const handleCreateFile = () => {
-        openModal("Crear nuevo archivo JSON", "Nombre del archivo...", "", (name) => {
+        openModal("Create new JSON file", "File name...", "", (name) => {
+            if (!name.trim()) {
+                alert("File name cannot be empty.");
+                return;
+            }
             const finalName = name.endsWith(".json") ? name : `${name}.json`;
             onCreateFile({ name: finalName, content: "{\n\n}" });
+            closeModal();
         });
     };
-
     const handleRename = (fileId) => {
         const file = files.find((f) => f.id === fileId);
         if (!file) return;
-        openModal("Renombrar archivo JSON", "Nuevo nombre...", file.name, (newName) => {
+
+        openModal("Rename JSON file", "New name for the file...", file.name, (newName) => {
+            if (!newName.trim()) {
+                alert("File name cannot be empty.");
+                return;
+            }
             const finalName = newName.endsWith(".json") ? newName : `${newName}.json`;
-            onRenameFile(file.id, finalName);
+            onRenameFile(fileId, finalName);
+            closeModal();
         });
     };
 
@@ -50,47 +71,57 @@ function Explorer({
         }
     };
 
+    const openContextMenu = (e, fileId) => {
+        e.preventDefault();
+        setContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            fileId,
+        });
+    };
+
+    const closeContextMenu = () =>
+        setContextMenu({ visible: false, x: 0, y: 0, fileId: null });
+
+    useEffect(() => {
+        const closeMenu = () => closeContextMenu();
+        window.addEventListener("click", closeMenu);
+        return () => {
+            window.removeEventListener("click", closeMenu);
+        };
+    }, []);
+
     return (
         <div className="explorer-container">
             <div className="explorer-toolbar">
                 <button onClick={handleCreateFile} className="btn">
                     <FilePlus size={16} /> New JSON
                 </button>
-                <button onClick={onImportFiles} className="btn">
+                <button
+                    onClick={async () => {
+                        const importedFiles = await onImportFiles();
+                        if (!Array.isArray(importedFiles)) {
+                            alert("Error al importar archivos JSON. Inténtalo de nuevo.");
+                        }
+                    }}
+                    className="btn"
+                >
                     <Upload size={16} /> Import
                 </button>
             </div>
-
             <div className="explorer-tree">
                 {files.length === 0 ? (
-                    <div>No hay archivos disponibles</div>
+                    <span>No hay archivos disponibles</span>
                 ) : (
                     <ul>
                         {files.map((file) => (
                             <li
                                 key={file.id}
-                                className={`explorer-item ${activeFileId === file.id ? "active" : ""}`}
                                 onClick={() => onSelectFile(file.id)}
-                                onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    const menuOptions = document.createElement("menu");
-                                    const rename = document.createElement("div");
-                                    const del = document.createElement("div");
-
-                                    rename.textContent = "Rename";
-                                    del.textContent = "Delete";
-
-                                    rename.onclick = () => handleRename(file.id);
-                                    del.onclick = (() => handleDelete(file.id));
-
-                                    document.body.appendChild(menuOptions);
-                                    menuOptions.appendChild(rename);
-                                    menuOptions.appendChild(del);
-
-                                    menuOptions.style.position = "absolute";
-                                    menuOptions.style.left = `${e.clientX}px`;
-                                    menuOptions.style.top = `${e.clientY}px\n\nvol`;
-                                }}
+                                onContextMenu={(e) => openContextMenu(e, file.id)}
+                                className={`explorer-item ${activeFileId === file.id ? "active" : ""
+                                    }`}
                             >
                                 {file.name}
                             </li>
@@ -98,18 +129,49 @@ function Explorer({
                     </ul>
                 )}
             </div>
-
-            {/* Modal */}
+            {contextMenu.visible && (
+                <div
+                    className="context-menu"
+                    style={{
+                        position: "absolute",
+                        top: `${contextMenu.y}px`,
+                        left: `${contextMenu.x}px`,
+                        zIndex: 1000,
+                        background: "#2d2d2d",
+                        padding: "10px",
+                        borderRadius: "4px",
+                        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.4)",
+                    }}
+                >
+                    <div
+                        className="context-menu-item"
+                        style={{ padding: "6px 10px", cursor: "pointer" }}
+                        onClick={() => {
+                            handleRename(contextMenu.fileId);
+                            closeContextMenu();
+                        }}
+                    >
+                        Rename
+                    </div>
+                    <div
+                        className="context-menu-item danger"
+                        style={{ padding: "6px 10px", cursor: "pointer", color: "#ff6b6b" }}
+                        onClick={() => {
+                            handleDelete(contextMenu.fileId);
+                            closeContextMenu();
+                        }}
+                    >
+                        Delete
+                    </div>
+                </div>
+            )}
             <InputModal
                 isOpen={showModal}
                 title={modalConfig.title}
                 placeholder={modalConfig.placeholder}
                 defaultValue={modalConfig.defaultValue}
-                onConfirm={(value) => {
-                    setShowModal(false);
-                    modalConfig.action(value);
-                }}
-                onCancel={() => setShowModal(false)}
+                onConfirm={(value) => modalConfig.action(value)}
+                onCancel={closeModal}
             />
         </div>
     );

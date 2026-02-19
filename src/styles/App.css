@@ -895,3 +895,16 @@
 .btn.danger:hover {
   background-color: #ff4d4d;
 }
+
+.viewer-disabled {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #6a6a6a;
+  font-size: 1rem;
+  font-style: italic;
+  padding: 15px;
+  text-align: center;
+}
