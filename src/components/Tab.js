@@ -7,34 +7,41 @@ function Tab({ tab, onUpdateTab }) {
   const [isValid, setIsValid] = useState(true);
   const [error, setError] = useState(null);
 
-  const activeFile = useMemo(
-    () => tab.files.find((f) => f.id === tab.activeFileId),
-    [tab.files, tab.activeFileId]
-  );
+  const activeFile = useMemo(() => tab.files.find((f) => f.id === tab.activeFileId), [tab.files, tab.activeFileId]);
   const viewerContent = activeFile?.content ?? "";
+  const isViewerEnabled = !!activeFile;
 
-  const setActiveFileId = (fileId) => onUpdateTab(tab.id, { activeFileId: fileId });
-
-  const onCreateFile = ({ name, content }) => {
-    const newFile = { id: Date.now().toString(), name, content };
-    const files = [...tab.files, newFile];
-    onUpdateTab(tab.id, { files, activeFileId: newFile.id });
+  const setActiveFileId = (fileId) => {
+    onUpdateTab(tab.id, { activeFileId: fileId });
+    // Reset validation state when switching files
+    setIsValid(true);
+    setError(null);
   };
 
-const onImportFiles = (importedFiles) => {
-  // Validamos que `importedFiles` sea válido y que sea un array.
-  if (!Array.isArray(importedFiles) || importedFiles.length === 0) return;
+  const onCreateFile = ({ name, content }) => {
+    const newFile = { id: crypto.randomUUID(), name, content };
+    onUpdateTab(tab.id, { files: [...tab.files, newFile], activeFileId: newFile.id });
+  };
 
-  const withIds = importedFiles.map((file) => ({
-    id: Date.now().toString(),
-    ...file,
-  }));
+  const onImportFiles = async () => {
+    const { importedFiles, errors } = await window.electronAPI.importJsonFiles();
 
-  const files = [...tab.files, ...withIds];
-  const activeFileId = withIds[0]?.id ?? null; // Abrir el primero de los importados (si existe)
-  
-  onUpdateTab(tab.id, { files, activeFileId });
-};
+    if (errors?.length > 0) {
+      alert(`Error al importar archivos:\n${errors.join("\n")}`);
+    }
+
+    if (!Array.isArray(importedFiles) || importedFiles.length === 0) return;
+
+    const importedWithIds = importedFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      ...file,
+    }));
+
+    onUpdateTab(tab.id, {
+      files: [...tab.files, ...importedWithIds],
+      activeFileId: importedWithIds[0].id,
+    });
+  };
 
   const onRenameFile = (fileId, newName) => {
     const files = tab.files.map((f) => (f.id === fileId ? { ...f, name: newName } : f));
@@ -43,24 +50,14 @@ const onImportFiles = (importedFiles) => {
 
   const onDeleteFile = (fileId) => {
     const files = tab.files.filter((f) => f.id !== fileId);
-    const newActive = tab.activeFileId === fileId ? (files[0]?.id ?? null) : tab.activeFileId;
-    onUpdateTab(tab.id, { files, activeFileId: newActive });
+    const newActiveFileId = tab.activeFileId === fileId ? (files[0]?.id ?? null) : tab.activeFileId;
+    onUpdateTab(tab.id, { files, activeFileId: newActiveFileId });
   };
 
   const onContentChange = (newContent) => {
-    if (!activeFile) {
-      // Crear uno si el usuario empieza a escribir sin archivo activo
-      const newFile = {
-        id: Date.now().toString(),
-        name: "untitled.json",
-        content: newContent,
-      };
-      const files = [...tab.files, newFile];
-      onUpdateTab(tab.id, { files, activeFileId: newFile.id });
-      return;
-    }
-    const files = tab.files.map((f) => (f.id === activeFile.id ? { ...f, content: newContent } : f));
-    onUpdateTab(tab.id, { files });
+    if (!activeFile) return;
+    const updatedFiles = tab.files.map((f) => (f.id === activeFile.id ? { ...f, content: newContent } : f));
+    onUpdateTab(tab.id, { files: updatedFiles });
   };
 
   const handleValidation = (valid, errorMsg) => {
@@ -69,37 +66,29 @@ const onImportFiles = (importedFiles) => {
   };
 
   return (
-    <div className="tab-container">
-      <ResizablePanels
-        left={
-          <div className="tab-panel">
-            <div className="panel-header">Explorer</div>
-            <Explorer
-              files={tab.files}
-              activeFileId={tab.activeFileId}
-              onSelectFile={setActiveFileId}
-              onCreateFile={onCreateFile}
-              onImportFiles={onImportFiles}
-              onRenameFile={onRenameFile}
-              onDeleteFile={onDeleteFile}
-              viewerContent={viewerContent}
-            />
-          </div>
-        }
-        right={
-          <div className="tab-panel">
-            <div className="panel-header">Viewer</div>
-            <JsonViewer
-              content={viewerContent}
-              isValid={isValid}
-              error={error}
-              onContentChange={onContentChange}
-              onValidation={handleValidation}
-            />
-          </div>
-        }
-      />
-    </div>
+    <ResizablePanels
+      left={
+        <Explorer
+          files={tab.files}
+          activeFileId={tab.activeFileId}
+          onSelectFile={setActiveFileId}
+          onCreateFile={onCreateFile}
+          onImportFiles={onImportFiles}
+          onRenameFile={onRenameFile}
+          onDeleteFile={onDeleteFile}
+        />
+      }
+      right={
+        <JsonViewer
+          content={viewerContent}
+          isValid={isValid}
+          error={error}
+          onContentChange={onContentChange}
+          onValidation={handleValidation}
+          isViewerEnabled={isViewerEnabled}
+        />
+      }
+    />
   );
 }
 

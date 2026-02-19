@@ -22,9 +22,11 @@ function TabBar({ tabs, activeTabId, onTabClick, onTabClose, onAddTab, onTabRena
   };
 
   const handleKeyDown = (e, tabId) => {
-    if (e.key === "Enter") {
+    const key = e.key.toLowerCase();
+
+    if (key === "enter") {
       handleNameSubmit(tabId);
-    } else if (e.key === "Escape") {
+    } else if (key === "escape") {
       setEditingTabId(null);
       setEditingName("");
     }

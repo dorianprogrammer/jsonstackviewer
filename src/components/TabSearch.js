@@ -6,39 +6,31 @@ function TabSearch({ tabs, activeTabId, onSelectTab, onClose }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    // Focus input when component mounts
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
 
-  // Filter tabs based on search query
   const filteredTabs = tabs.filter((tab) => tab.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Reset selected index when search changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev < filteredTabs.length - 1 ? prev + 1 : prev));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (filteredTabs.length > 0) {
-        onSelectTab(filteredTabs[selectedIndex].id);
-      }
-    } else if (e.key === "Escape") {
-      onClose();
-    }
-  };
+    const key = e.key.toLowerCase();
 
-  const handleTabClick = (tabId) => {
-    onSelectTab(tabId);
+    if (key === "escape") {
+      onClose();
+    } else if (key === "arrowdown") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.min(i + 1, filteredTabs.length - 1));
+    } else if (key === "arrowup") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if (key === "enter" && filteredTabs[selectedIndex]) {
+      onSelectTab(filteredTabs[selectedIndex].id);
+    }
   };
 
   return (
@@ -58,10 +50,8 @@ function TabSearch({ tabs, activeTabId, onSelectTab, onClose }) {
             filteredTabs.map((tab, index) => (
               <div
                 key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={`tab-search-item ${
-                  index === selectedIndex ? "selected" : ""
-                } ${tab.id === activeTabId ? "active" : ""}`}
+                onClick={() => onSelectTab(tab.id)}
+                className={`tab-search-item ${index === selectedIndex ? "selected" : ""} ${tab.id === activeTabId ? "active" : ""}`}
               >
                 <span className="tab-search-name">{tab.name}</span>
                 {tab.id === activeTabId && <span className="tab-search-badge">Active</span>}

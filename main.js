@@ -3,6 +3,11 @@ const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store").default;
 
+require("electron-reload")(__dirname, {
+  electron: path.join(__dirname, "node_modules", ".bin", process.platform === "win32" ? "electron.cmd" : "electron"),
+  hardResetMethod: "exit",
+  ignored: /node_modules|[\/\\]\./,
+});
 const store = new Store();
 
 let mainWindow;
@@ -19,11 +24,10 @@ function createWindow() {
     },
   });
 
-  // Maximize window on startup
   mainWindow.maximize();
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-    mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -57,28 +61,32 @@ ipcMain.handle("import-json-files", async () => {
   const { filePaths, canceled } = await dialog.showOpenDialog({
     title: "Importar archivos JSON",
     properties: ["openFile", "multiSelections"],
-    filters: [{ name: "JSON", extensions: ["json"] }],
+    filters: [{ name: "Archivos JSON", extensions: ["json"] }],
   });
 
-  if (canceled || !filePaths.length) return []; 
+  if (canceled || !filePaths.length) return { importedFiles: [], errors: [] };
 
-  try {
-    const files = filePaths.map((filePath) => ({
-      name: path.basename(filePath),
-      content: fs.readFileSync(filePath, "utf-8"),
-    }));
-    return files;
-  } catch (error) {
-    console.error("Error al importar archivos:", error);
-    return []; 
+  const importedFiles = [];
+  const errors = [];
+
+  for (const filePath of filePaths) {
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      JSON.parse(content); // Validar que sea JSON
+      importedFiles.push({ name: path.basename(filePath), content });
+    } catch (error) {
+      errors.push(`El archivo "${path.basename(filePath)}" no es un JSON válido.`);
+    }
   }
+
+  return { importedFiles, errors };
 });
 
-app.commandLine.appendSwitch('disable-http-cache');
-app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch("disable-http-cache");
+app.commandLine.appendSwitch("disable-gpu");
 
 const os = require("os");
-app.setPath('userData', path.join(os.tmpdir(), 'jsonstackviewer-dev'));
+app.setPath("userData", path.join(os.tmpdir(), "jsonstackviewer-dev"));
 
 app.on("ready", createWindow);
 
