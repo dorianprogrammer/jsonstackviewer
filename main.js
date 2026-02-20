@@ -120,6 +120,27 @@ ipcMain.handle("import-json-files", async () => {
   return { importedFiles, errors };
 });
 
+// exporta archivos json
+ipcMain.handle("export-json-file", async (event, { defaultFileName, content }) => {
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: "Exportar JSON",
+    defaultPath: defaultFileName || "data.json",
+    filters: [{ name: "Archivos JSON", extensions: ["json"] }],
+  });
+
+  if (canceled || !filePath) return { success: false, canceled: true };
+
+  try {
+    // opcional: asegurar extensión .json
+    const finalPath = filePath.toLowerCase().endsWith(".json") ? filePath : `${filePath}.json`;
+
+    fs.writeFileSync(finalPath, content ?? "", "utf-8");
+    return { success: true, filePath: finalPath };
+  } catch (error) {
+    return { success: false, error: error?.message ?? String(error) };
+  }
+});
+
 app.commandLine.appendSwitch("disable-http-cache");
 app.commandLine.appendSwitch("disable-gpu");
 

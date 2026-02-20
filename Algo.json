@@ -1,0 +1,15 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Resend": {
+    "ApiKey": "",
+    "From": "noreply@iamsuit.app",
+    "FromName": "IAM Suit",
+    "ReplyTo": "soporte@iamsuit.app"
+  }
+}

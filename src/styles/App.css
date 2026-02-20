@@ -763,6 +763,7 @@
   gap: 4px;
   list-style: none;
 }
+
 .explorer-item:hover {
   background: #3a3a3a;
 }
@@ -796,7 +797,8 @@
   background: none;
   border: none;
   border-radius: 3px;
-  color: transparent; /* invisible at rest */
+  color: transparent;
+  /* invisible at rest */
   cursor: pointer;
   padding: 0;
   transition:
@@ -838,6 +840,7 @@
   height: 100%;
   overflow: hidden;
 }
+
 .viewer-toolbar {
   display: flex;
   gap: 8px;
@@ -1004,6 +1007,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1029,6 +1033,7 @@
     transform: translateY(-12px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1061,7 +1066,8 @@
 }
 
 .preview-text span {
-  color: #4ec9b0; /* teal — same as the tab-search-badge accent */
+  color: #4ec9b0;
+  /* teal — same as the tab-search-badge accent */
 }
 
 /* ── Input ── */
@@ -1209,7 +1215,8 @@
 
 /* ── Confirm Modal ── */
 .confirm-modal {
-  border-top-color: #c0392b; /* red accent instead of blue — signals destructive action */
+  border-top-color: #c0392b;
+  /* red accent instead of blue — signals destructive action */
   width: 380px;
 }
 
@@ -1259,4 +1266,55 @@
 .modal-actions .btn.confirm-delete:hover {
   background: #e74c3c;
   border-color: #e74c3c;
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+
+  min-width: 320px;
+  max-width: 80vw;
+  padding: 10px 12px;
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  background: #2b2b2b;
+}
+
+.toast-success {
+  background: #1f7a3f;
+}
+
+.toast-error {
+  background: #a12828;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 14px;
+}
+
+.toast-close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: 0.9;
+}
+
+.toast-close:hover {
+  opacity: 1;
 }

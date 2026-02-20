@@ -3,7 +3,7 @@ import ResizablePanels from "./ResizablePanels";
 import Explorer from "./Explorer";
 import JsonViewer from "./JsonViewer";
 
-function Tab({ tab, onUpdateTab }) {
+function Tab({ tab, onUpdateTab, onNotify }) {
   const activeFile = useMemo(() => tab.files.find((f) => f.id === tab.activeFileId), [tab.files, tab.activeFileId]);
 
   const isViewerEnabled = !!activeFile;
@@ -38,6 +38,36 @@ function Tab({ tab, onUpdateTab }) {
     });
   };
 
+  const onExportFile = async () => {
+    if (!activeFile) {
+      alert("No active file to export.");
+      return;
+    }
+
+    const result = await window.electronAPI.exportJsonFile({
+      defaultFileName: activeFile.name || "data.json",
+      content: activeFile.content || "",
+    });
+
+    if (result?.success) {
+      onNotify?.({
+        type: "success",
+        message: `Exported successfully: ${result.filePath}`,
+      });
+      return;
+    }
+
+    if (result?.canceled) return;
+
+    if (!result?.success) {
+      onNotify?.({
+        type: "error",
+        message: `Error exporting: ${result?.error ?? "unknown"}`,
+      });
+      return;
+    }
+  }
+
   const onRenameFile = (fileId, newName) => {
     const files = tab.files.map((f) => (f.id === fileId ? { ...f, name: newName } : f));
     onUpdateTab(tab.id, { files });
@@ -66,6 +96,7 @@ function Tab({ tab, onUpdateTab }) {
           onImportFiles={onImportFiles}
           onRenameFile={onRenameFile}
           onDeleteFile={onDeleteFile}
+          onExportFile={onExportFile}
         />
       }
       right={

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import TabBar from "./components/TabBar";
 import Tab from "./components/Tab";
+import Toast from "./components/Toast";
 import TabSearch from "./components/TabSearch";
 import "./styles/App.css";
 
@@ -8,6 +9,13 @@ function App() {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
   const [showTabSearch, setShowTabSearch] = useState(false);
+
+  const [toast, setToast] = useState(null);
+
+  const notify = (nextToast) => {
+    setToast(nextToast);
+  };
+
   // No editorRef needed — CodeMirror focus detected via DOM class
   const isEditorFocused = () => {
     // CodeMirror uses a contenteditable div with class 'cm-content'
@@ -164,6 +172,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <Toast toast={toast} onClose={() => setToast(null)} />
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -177,6 +186,7 @@ function App() {
           <Tab
             key={activeTab.id}
             tab={activeTab}
+            onNotify={notify}
             onUpdateTab={onUpdateTab}
             onRegisterEditor={(editor) => {
               editorRef.current = editor;

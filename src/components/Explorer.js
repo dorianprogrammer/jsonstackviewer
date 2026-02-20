@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FilePlus, Upload, FileJson, Trash2 } from "lucide-react";
+import { FilePlus, Upload, FileJson, Trash2, Download } from "lucide-react";
 import InputModal from "./inputModal";
 import ConfirmModal from "./ConfirmModal";
 
-function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFiles, onRenameFile, onDeleteFile }) {
+function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFiles, onRenameFile, onDeleteFile, onExportFile }) {
   const [showModal, setShowModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: "",
@@ -106,20 +106,30 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
         >
           <Upload size={16} /> Import
         </button>
-      </div>
-      <div className="explorer-tree">
-        {files.length === 0 ? (
-          <div className="explorer-empty-state">
+        <button
+          onClick={async () => {
+            await onExportFile?.();
+            }}
+            className="btn"
+            disabled={!activeFileId}
+            title={!activeFileId ? "Select a file to export" : "Export file"}
+          >
+            <Download size={16} /> Export
+          </button>
+          </div>
+          <div className="explorer-tree">
+          {files.length === 0 ? (
+            <div className="explorer-empty-state">
             <FileJson size={32} className="explorer-empty-icon" />
             <p className="explorer-empty-title">No files yet</p>
             <p className="explorer-empty-hint">Create a new file or import an existing JSON to get started.</p>
-          </div>
-        ) : (
-          <ul>
+            </div>
+          ) : (
+            <ul>
             {files.map((file) => (
               <li
-                key={file.id}
-                onClick={() => {
+              key={file.id}
+              onClick={() => {
                   if (editingFileId !== file.id) onSelectFile(file.id);
                 }}
                 className={`explorer-item ${activeFileId === file.id ? "active" : ""} ${editingFileId === file.id ? "editing" : ""}`}
