@@ -32,8 +32,8 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
 
   if (process.env.NODE_ENV === "development") {
+    mainWindow.webContents.openDevTools();
   }
-  mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -111,9 +111,7 @@ ipcMain.handle("import-json-files", async () => {
 
       importedFiles.push({ name: path.basename(filePath), content: formatted });
     } catch (error) {
-      errors.push(
-        `El archivo "${path.basename(filePath)}" no es un JSON válido. Detalle: ${error?.message ?? error}`,
-      );
+      errors.push(`El archivo "${path.basename(filePath)}" no es un JSON válido. Detalle: ${error?.message ?? error}`);
     }
   }
 
@@ -144,8 +142,10 @@ ipcMain.handle("export-json-file", async (event, { defaultFileName, content }) =
 app.commandLine.appendSwitch("disable-http-cache");
 app.commandLine.appendSwitch("disable-gpu");
 
-const os = require("os");
-app.setPath("userData", path.join(os.tmpdir(), "jsonstackviewer-dev"));
+if (process.env.NODE_ENV === "development") {
+  const os = require("os");
+  app.setPath("userData", path.join(os.tmpdir(), "jsonstackviewer-dev"));
+}
 
 app.on("ready", createWindow);
 
