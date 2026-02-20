@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FilePlus, Upload, FileJson, Trash2, Download } from "lucide-react";
+import { FilePlus, Upload, FileJson, Trash2, Download, Search, X } from "lucide-react";
 import InputModal from "./inputModal";
 import ConfirmModal from "./ConfirmModal";
 
-function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFiles, onRenameFile, onDeleteFile, onExportFile }) {
+function Explorer({
+  files,
+  activeFileId,
+  onSelectFile,
+  onCreateFile,
+  onImportFiles,
+  onRenameFile,
+  onDeleteFile,
+  onExportFile,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: "",
@@ -22,6 +31,9 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
   const [editingName, setEditingName] = useState("");
   const inlineInputRef = useRef(null);
 
+  const [search, setSearch] = useState("");
+  const searchInputRef = useRef(null);
+
   useEffect(() => {
     if (editingFileId && inlineInputRef.current) {
       inlineInputRef.current.focus();
@@ -30,6 +42,10 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
       inlineInputRef.current.setSelectionRange(0, dotIndex > 0 ? dotIndex : val.length);
     }
   }, [editingFileId]);
+
+  const filteredFiles = search.trim()
+    ? files.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
+    : files;
 
   const openModal = (title, placeholder, defaultValue, action) => {
     setModalConfig({ title, placeholder, defaultValue, action });
@@ -109,27 +125,57 @@ function Explorer({ files, activeFileId, onSelectFile, onCreateFile, onImportFil
         <button
           onClick={async () => {
             await onExportFile?.();
+          }}
+          className="btn"
+          disabled={!activeFileId}
+          title={!activeFileId ? "Select a file to export" : "Export file"}
+        >
+          <Download size={16} /> Export
+        </button>
+        <div className="explorer-search">
+          <Search size={13} className="explorer-search-icon" />
+          <input
+            ref={searchInputRef}
+            className="explorer-search-input"
+            placeholder="Filter files..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.code === "Escape") setSearch("");
             }}
-            className="btn"
-            disabled={!activeFileId}
-            title={!activeFileId ? "Select a file to export" : "Export file"}
-          >
-            <Download size={16} /> Export
-          </button>
-          </div>
-          <div className="explorer-tree">
-          {files.length === 0 ? (
-            <div className="explorer-empty-state">
+          />
+          {search && (
+            <button
+              className="explorer-search-clear"
+              onClick={() => {
+                setSearch("");
+                searchInputRef.current?.focus();
+              }}
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="explorer-tree">
+        {files.length === 0 ? (
+          <div className="explorer-empty-state">
             <FileJson size={32} className="explorer-empty-icon" />
             <p className="explorer-empty-title">No files yet</p>
             <p className="explorer-empty-hint">Create a new file or import an existing JSON to get started.</p>
-            </div>
-          ) : (
-            <ul>
-            {files.map((file) => (
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="explorer-empty-state">
+            <Search size={28} className="explorer-empty-icon" />
+            <p className="explorer-empty-title">No matches</p>
+            <p className="explorer-empty-hint">No files match "{search}"</p>
+          </div>
+        ) : (
+          <ul>
+            {filteredFiles.map((file) => (
               <li
-              key={file.id}
-              onClick={() => {
+                key={file.id}
+                onClick={() => {
                   if (editingFileId !== file.id) onSelectFile(file.id);
                 }}
                 className={`explorer-item ${activeFileId === file.id ? "active" : ""} ${editingFileId === file.id ? "editing" : ""}`}

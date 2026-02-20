@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import TabBar from "./components/TabBar";
 import Tab from "./components/Tab";
 import Toast from "./components/Toast";
@@ -9,21 +9,21 @@ function App() {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
   const [showTabSearch, setShowTabSearch] = useState(false);
-
   const [toast, setToast] = useState(null);
 
-  const notify = (nextToast) => {
-    setToast(nextToast);
-  };
+  const notify = (nextToast) => setToast(nextToast);
 
-  // No editorRef needed — CodeMirror focus detected via DOM class
   const isEditorFocused = () => {
-    // CodeMirror uses a contenteditable div with class 'cm-content'
     const active = document.activeElement;
     if (!active) return false;
     if (active.classList.contains("cm-content")) return true;
     if (active.closest?.(".cm-editor")) return true;
     return false;
+  };
+
+  const isInputFocused = () => {
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea";
   };
 
   const migrateTabs = (loadedTabs) =>
@@ -49,7 +49,7 @@ function App() {
       String(now.getDate()).padStart(2, "0"),
       "_",
       String(now.getHours()).padStart(2, "0"),
-      String(now.getMinutes()).padStart(2, "00"),
+      String(now.getMinutes()).padStart(2, "0"),
       String(now.getSeconds()).padStart(2, "0"),
     ].join("");
     if (Array.isArray(parsed)) return `array_${timestamp}.json`;
@@ -90,7 +90,12 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = async (e) => {
-      if (isEditorFocused()) return;
+      // Ctrl+P should work even when the editor is focused
+      const isCtrlP = (e.ctrlKey || e.metaKey) && e.code === "KeyP";
+      if (isEditorFocused() && !isCtrlP) return;
+
+      // Let inputs/textareas handle their own keyboard events
+      if (isInputFocused()) return;
 
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyV") {
         e.preventDefault();
@@ -182,17 +187,7 @@ function App() {
         onTabRename={renameTab}
       />
       <div className="tab-content">
-        {activeTab && (
-          <Tab
-            key={activeTab.id}
-            tab={activeTab}
-            onNotify={notify}
-            onUpdateTab={onUpdateTab}
-            onRegisterEditor={(editor) => {
-              editorRef.current = editor;
-            }}
-          />
-        )}
+        {activeTab && <Tab key={activeTab.id} tab={activeTab} onNotify={notify} onUpdateTab={onUpdateTab} />}
       </div>
       {showTabSearch && (
         <TabSearch

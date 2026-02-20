@@ -1,11 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
-import { EditorView, lineNumbers, keymap, scrollPastEnd } from "@codemirror/view";
+import { EditorView, lineNumbers, keymap, drawSelection } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
 import { json } from "@codemirror/lang-json";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, historyKeymap, history, indentWithTab } from "@codemirror/commands";
 import { searchKeymap, highlightSelectionMatches, search } from "@codemirror/search";
-import { Minimize2, AlignLeft, ArrowUp } from "lucide-react";
+import {
+  foldGutter,
+  syntaxHighlighting,
+  defaultHighlightStyle,
+  foldAll,
+  unfoldAll,
+  foldEffect,
+} from "@codemirror/language";
+import { syntaxTree } from "@codemirror/language";
+import { Minimize2, AlignLeft, ArrowUp, ChevronsUpDown, ChevronDown } from "lucide-react";
 
 const readOnlyCompartment = new Compartment();
 
@@ -44,13 +53,11 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
   // Create CodeMirror once
   useEffect(() => {
     const updateListener = EditorView.updateListener.of((update) => {
-      // Scroll tracking
       if (update.view.scrollDOM.scrollTop > 100) {
         setShowScrollTop(true);
       } else {
         setShowScrollTop(false);
       }
-      // Content change — only propagate user edits
       if (update.docChanged) {
         const val = update.state.doc.toString();
         onContentChangeRef.current?.(val);
@@ -64,8 +71,10 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
         extensions: [
           history(),
           lineNumbers(),
+          foldGutter(),
           json(),
           oneDark,
+          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           highlightSelectionMatches(),
           search({ top: true }),
           keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -79,7 +88,6 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
 
     viewRef.current = view;
 
-    // Focus if a file is already loaded
     if (fileIdRef.current) {
       requestAnimationFrame(() => view.focus());
     }
@@ -105,12 +113,10 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
       return;
     }
 
-    // Replace entire content and unlock editing
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: initialContent || "" },
       effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(false)),
     });
-    // Scroll to top
     view.dispatch({ selection: { anchor: 0 } });
     view.scrollDOM.scrollTop = 0;
     setIsValid(true);
@@ -123,9 +129,7 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
   const setValue = (val) => {
     const view = viewRef.current;
     if (!view) return;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: val },
-    });
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: val } });
   };
 
   const formatJson = () => {
@@ -156,6 +160,51 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
     }
   };
 
+  // Fold every foldable node in the document
+  const foldAllNodes = () => {
+    const view = viewRef.current;
+    if (!view) return;
+    unfoldAll(view);
+    foldAll(view);
+  };
+
+  // Fold only inner nodes — keep root object/array open
+  const foldInner = () => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    // Start clean
+    unfoldAll(view);
+
+    const state = view.state;
+    const tree = syntaxTree(state);
+    const effects = [];
+
+    // Find the root node (first child of Document)
+    const root = tree.topNode.firstChild;
+    if (!root) return;
+
+    // Walk all descendants of the root and fold Object/Array nodes
+    // The foldEffect range is: from the opening brace+1 to closing brace-1
+    root.cursor().iterate((node) => {
+      // Skip the root itself
+      if (node.from === root.from && node.to === root.to) return;
+      if (node.name === "Object" || node.name === "Array") {
+        // from: position after opening { or [
+        // to: position before closing } or ]
+        const from = node.from + 1;
+        const to = node.to - 1;
+        if (to > from + 1) {
+          effects.push(foldEffect.of({ from, to }));
+        }
+      }
+    });
+
+    if (effects.length > 0) {
+      view.dispatch({ effects });
+    }
+  };
+
   const scrollToTop = () => {
     if (viewRef.current) {
       viewRef.current.scrollDOM.scrollTop = 0;
@@ -170,6 +219,13 @@ function JsonViewer({ fileId, initialContent, isViewerEnabled, onContentChange }
         </button>
         <button onClick={compactJson} className="btn" title="Compactar JSON">
           <Minimize2 size={16} /> Compactar
+        </button>
+        <div className="btn-separator" />
+        <button onClick={foldAllNodes} className="btn" title="Colapsar todo">
+          <ChevronsUpDown size={16} /> Colapsar todo
+        </button>
+        <button onClick={foldInner} className="btn" title="Colapsar internos">
+          <ChevronDown size={16} /> Colapsar internos
         </button>
       </div>
 

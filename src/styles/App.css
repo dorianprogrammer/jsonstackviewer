@@ -856,6 +856,10 @@
   border-radius: 4px;
   padding: 6px 10px;
   cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
 }
 
 .btn:hover {
@@ -1271,50 +1275,164 @@
 /* Toast notifications */
 .toast {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 24px;
+  right: 24px;
   z-index: 9999;
-
-  min-width: 320px;
-  max-width: 80vw;
-  padding: 10px 12px;
-  border-radius: 8px;
-
   display: flex;
   align-items: center;
   gap: 10px;
-
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  background: #2b2b2b;
+  padding: 12px 14px;
+  border-radius: 6px;
+  min-width: 280px;
+  max-width: 480px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #f0f0f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  border-left: 4px solid transparent;
 }
 
-.toast-success {
-  background: #1f7a3f;
+..toast--success {
+  background: #1e3a2f;
+  border-left-color: #4caf82;
 }
 
-.toast-error {
-  background: #a12828;
+.toast--error {
+  background: #3a1e1e;
+  border-left-color: #e05c5c;
 }
 
-.toast-message {
+.toast--info {
+  background: #1e2a3a;
+  border-left-color: #5c9ae0;
+}
+
+.toast--enter {
+  animation: toastSlideIn 0.25s ease forwards;
+}
+
+.toast--exit {
+  animation: toastSlideOut 0.3s ease forwards;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.toast__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toast--success .toast__icon {
+  color: #4caf82;
+}
+.toast--error .toast__icon {
+  color: #e05c5c;
+}
+.toast--info .toast__icon {
+  color: #5c9ae0;
+}
+
+.toast__message {
   flex: 1;
-  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-.toast-close {
-  background: transparent;
-  border: 0;
-  color: inherit;
+.toast__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #888;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  padding: 0 4px;
-  opacity: 0.9;
+  padding: 2px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s;
 }
 
-.toast-close:hover {
-  opacity: 1;
+.toast__close:hover {
+  color: #f0f0f0;
+}
+
+.btn-separator {
+  width: 1px;
+  background: #4d4d4d;
+  margin: 2px 4px;
+  align-self: stretch;
+}
+
+/* ── Explorer Search Bar ─────────────────────────────── */
+.explorer-search {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #3d3d3d;
+  border-radius: 4px;
+  padding: 0 8px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.explorer-search:focus-within {
+  border-color: #007acc;
+}
+
+.explorer-search-icon {
+  color: #858585;
+  flex-shrink: 0;
+}
+
+.explorer-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #d4d4d4;
+  font-size: 12px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.explorer-search-input::placeholder {
+  color: #555;
+}
+
+.explorer-search-clear {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.explorer-search-clear:hover {
+  color: #ccc;
 }
